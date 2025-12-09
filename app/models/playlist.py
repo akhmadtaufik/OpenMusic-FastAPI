@@ -28,3 +28,6 @@ class Playlist(Base):
     
     # Relationship to user
     user = relationship("User", backref="playlists")
+
+    # Relationship to songs (Many-to-Many via PlaylistSong)
+    songs = relationship("Song", secondary="playlist_songs", backref="playlists", lazy="selectin")
