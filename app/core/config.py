@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int
     POSTGRES_DB: str
 
+    ACCESS_TOKEN_KEY: str
+    REFRESH_TOKEN_KEY: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
