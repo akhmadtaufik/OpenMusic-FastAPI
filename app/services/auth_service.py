@@ -62,7 +62,7 @@ class AuthService:
         stored_token = result.scalar_one_or_none()
         
         if not stored_token:
-            raise AuthenticationError("Refresh token not found in database")
+            raise ValidationError("Refresh token not found in database")
             
         # Verify signature/claims
         user_id = verify_refresh_token(token)
@@ -87,4 +87,5 @@ class AuthService:
         if stored_token:
             await self.db.delete(stored_token)
             await self.db.commit()
-        # If not found, we treat as already logged out (success)
+        else:
+            raise ValidationError("Refresh token not found in database")
