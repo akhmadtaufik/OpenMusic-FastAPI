@@ -111,3 +111,21 @@ async def delete_song_from_playlist(
         "status": "success",
         "message": "Song removed from playlist"
     }
+
+@router.get("/{playlist_id}/activities", response_model=dict)
+async def get_playlist_activities(
+    playlist_id: str,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get playlist activities."""
+    service = PlaylistService(db)
+    activities = await service.get_playlist_activities(playlist_id, owner_id=current_user)
+    
+    return {
+        "status": "success",
+        "data": {
+            "playlistId": playlist_id,
+            "activities": activities
+        }
+    }
