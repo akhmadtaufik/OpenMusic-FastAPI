@@ -1,0 +1,68 @@
+"""Pydantic schemas for Album payloads and standard API envelopes.
+
+Defines input/output models used by the API layer, including typed wrappers
+for response shapes and attribute-based ORM serialization.
+"""
+
+from pydantic import BaseModel, ConfigDict
+from typing import Generic, TypeVar, Optional, List
+from app.schemas.song import SongSimplified
+
+T = TypeVar('T')
+
+class AlbumCreate(BaseModel):
+    """Payload to create or update an album.
+
+    Attributes:
+        name: Album title.
+        year: Release year.
+    """
+    name: str
+    year: int
+
+class AlbumResponse(BaseModel):
+    """Serialized album representation returned by the API.
+
+    Attributes:
+        id: Public album identifier.
+        name: Album title.
+        year: Release year.
+        songs: Collection of related songs in simplified form.
+
+    Notes:
+        model_config.from_attributes=True enables constructing this model
+        directly from ORM entities (SQLAlchemy models) via attribute access.
+    """
+    id: str
+    name: str
+    year: int
+    songs: List[SongSimplified] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+class DataWrapper(BaseModel, Generic[T]):
+    """Data container for 'album' namespaced payloads.
+
+    Used to shape responses like {"data": {"album": <AlbumResponse>}} when
+    combined with StandardResponse.
+    """
+    album: Optional[T] = None
+
+class AlbumIdWrapper(BaseModel):
+    """Response payload carrying only an album identifier.
+
+    Matches endpoints that return just the created resource ID.
+    """
+    albumId: str
+
+class StandardResponse(BaseModel, Generic[T]):
+    """Standardized API response envelope.
+
+    Attributes:
+        status: 'success', 'fail', or 'error'.
+        message: Optional human-readable message.
+        data: Optional typed payload (often a DataWrapper instance).
+    """
+    status: str
+    message: Optional[str] = None
+    data: Optional[T] = None
