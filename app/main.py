@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.api import api_router
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError, AuthenticationError
 
 app = FastAPI(title="OpenMusic API")
 
@@ -60,6 +60,15 @@ async def custom_validation_exception_handler(request: Request, exc: ValidationE
     """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
+        content={"status": "fail", "message": str(exc)},
+    )
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_exception_handler(request: Request, exc: AuthenticationError):
+    """Map domain AuthenticationError to a 401 response."""
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
         content={"status": "fail", "message": str(exc)},
     )
 
