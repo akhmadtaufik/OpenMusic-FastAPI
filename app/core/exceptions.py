@@ -32,3 +32,10 @@ class AuthenticationError(OpenMusicException):
     Typically mapped to an HTTP 401 by the API layer.
     """
     pass
+
+class ForbiddenError(OpenMusicException):
+    """Raised when access is denied.
+
+    Typically mapped to an HTTP 403 by the API layer.
+    """
+    pass
