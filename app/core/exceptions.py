@@ -25,3 +25,10 @@ class ValidationError(OpenMusicException):
     Typically mapped to an HTTP 400 by the API layer.
     """
     pass
+
+class AuthenticationError(OpenMusicException):
+    """Raised when authentication fails (credentials, tokens).
+
+    Typically mapped to an HTTP 401 by the API layer.
+    """
+    pass
