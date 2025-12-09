@@ -10,8 +10,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.api import api_router
-from app.core.exceptions import NotFoundError, ValidationError, AuthenticationError
-from app.services.playlist_service import ForbiddenError
+from app.core.exceptions import NotFoundError, ValidationError, AuthenticationError, ForbiddenError
 
 app = FastAPI(title="OpenMusic API")
 
