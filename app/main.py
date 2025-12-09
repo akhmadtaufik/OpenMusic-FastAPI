@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.api import api_router
 from app.core.exceptions import NotFoundError, ValidationError, AuthenticationError
+from app.services.playlist_service import ForbiddenError
 
 app = FastAPI(title="OpenMusic API")
 
@@ -69,6 +70,15 @@ async def authentication_exception_handler(request: Request, exc: Authentication
     """Map domain AuthenticationError to a 401 response."""
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"status": "fail", "message": str(exc)},
+    )
+
+
+@app.exception_handler(ForbiddenError)
+async def forbidden_exception_handler(request: Request, exc: ForbiddenError):
+    """Map domain ForbiddenError to a 403 response."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
         content={"status": "fail", "message": str(exc)},
     )
 
