@@ -27,5 +27,47 @@ services:
     depends_on:
       - db
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+    volumes:
+      - minio_data:/data
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb myminio/${MINIO_BUCKET_NAME};
+      exit 0;
+      "
+
 volumes:
   postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
