@@ -27,6 +27,7 @@ class AlbumResponse(BaseModel):
         id: Public album identifier.
         name: Album title.
         year: Release year.
+        coverUrl: URL to the album cover image (if uploaded).
         songs: Collection of related songs in simplified form.
 
     Notes:
@@ -36,6 +37,7 @@ class AlbumResponse(BaseModel):
     id: str
     name: str
     year: int
+    coverUrl: Optional[str] = None
     songs: List[SongSimplified] = []
 
     model_config = ConfigDict(from_attributes=True)
