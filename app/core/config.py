@@ -37,6 +37,24 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Redis
+    REDIS_HOST: str
+    REDIS_PORT: int
+
+    # RabbitMQ
+    RABBITMQ_SERVER: str
+
+    # SMTP
+    SMTP_HOST: Optional[str]
+    SMTP_PORT: Optional[int]
+    SMTP_USER: Optional[str]
+    SMTP_PASSWORD: Optional[str]
+
+    # MinIO
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
+    MINIO_BUCKET_NAME: str
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
