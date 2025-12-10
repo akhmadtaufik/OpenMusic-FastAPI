@@ -95,3 +95,14 @@ class AlbumService:
         album = await self.get_album_by_id(album_id)
         await self.db.delete(album)
         await self.db.commit()
+
+    async def update_cover_url(self, album_id: str, cover_url: str) -> None:
+        """Update the cover URL for an album.
+
+        Args:
+            album_id: The target album identifier.
+            cover_url: The URL of the uploaded cover image.
+        """
+        album = await self.get_album_by_id(album_id)
+        album.cover_url = cover_url
+        await self.db.commit()
