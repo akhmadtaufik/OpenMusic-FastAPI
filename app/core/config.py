@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: Optional[str]
 
     # MinIO
+    MINIO_ENDPOINT: str = "minio:9000"
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
     MINIO_BUCKET_NAME: str
