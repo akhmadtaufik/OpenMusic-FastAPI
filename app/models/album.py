@@ -32,6 +32,7 @@ class Album(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_album_id)
     name: Mapped[str] = mapped_column(String, nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=False)
+    cover_url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Cascade deletes to child songs so removing an album cleans up its rows.
     songs = relationship("Song", back_populates="album", cascade="all, delete-orphan")
