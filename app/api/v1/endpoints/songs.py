@@ -6,7 +6,6 @@ standardized envelope shape.
 """
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.services.song_service import SongService
 from app.schemas.song import (
@@ -25,7 +24,7 @@ router = APIRouter()
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[SongIdWrapper])
 async def create_song(
     song_in: SongCreate,
-    db: AsyncSession = Depends(deps.get_db)
+    service: SongService = Depends(deps.get_song_service),
 ):
     """Create a new song.
 
@@ -36,7 +35,6 @@ async def create_song(
     Returns:
         StandardResponse[SongIdWrapper]: Response with the created song ID.
     """
-    service = SongService(db)
     new_song = await service.create_song(song_in)
     return StandardResponse(
         status="success",
@@ -45,9 +43,9 @@ async def create_song(
 
 @router.get("/", response_model=StandardResponse[SongListWrapper])
 async def get_songs(
+    service: SongService = Depends(deps.get_song_service),
     title: str = None,
     performer: str = None,
-    db: AsyncSession = Depends(deps.get_db)
 ):
     """List songs with optional case-insensitive filters.
 
@@ -59,7 +57,6 @@ async def get_songs(
     Returns:
         StandardResponse[SongListWrapper]: Response with a list projection of songs.
     """
-    service = SongService(db)
     songs = await service.get_songs(title=title, performer=performer)
     # Map to simplified SongList
     song_list = [SongList.model_validate(song) for song in songs]
@@ -71,7 +68,7 @@ async def get_songs(
 @router.get("/{id}", response_model=StandardResponse[SongDetailWrapper])
 async def get_song(
     id: str,
-    db: AsyncSession = Depends(deps.get_db)
+    service: SongService = Depends(deps.get_song_service),
 ):
     """Retrieve a song by its identifier.
 
@@ -82,7 +79,6 @@ async def get_song(
     Returns:
         StandardResponse[SongDetailWrapper]: Response with full song details.
     """
-    service = SongService(db)
     song = await service.get_song_by_id(id)
     return StandardResponse(
         status="success",
@@ -93,7 +89,7 @@ async def get_song(
 async def update_song(
     id: str,
     song_in: SongUpdate,
-    db: AsyncSession = Depends(deps.get_db)
+    service: SongService = Depends(deps.get_song_service),
 ):
     """Update a song's mutable fields.
 
@@ -105,7 +101,6 @@ async def update_song(
     Returns:
         StandardResponse[None]: Response with a success status and message.
     """
-    service = SongService(db)
     await service.update_song(id, song_in)
     return StandardResponse(
         status="success",
@@ -115,7 +110,7 @@ async def update_song(
 @router.delete("/{id}", response_model=StandardResponse[None])
 async def delete_song(
     id: str,
-    db: AsyncSession = Depends(deps.get_db)
+    service: SongService = Depends(deps.get_song_service),
 ):
     """Delete a song by its identifier.
 
@@ -126,7 +121,6 @@ async def delete_song(
     Returns:
         StandardResponse[None]: Response with a success status and message.
     """
-    service = SongService(db)
     await service.delete_song(id)
     return StandardResponse(
         status="success",
