@@ -3,12 +3,13 @@
 Provides endpoint to request playlist export via RabbitMQ.
 """
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user
 from app.services.playlist_service import PlaylistService
 from app.services.producer_service import producer_service
 from pydantic import BaseModel, EmailStr
+from app.core.exceptions import NotFoundError, ForbiddenError
 
 router = APIRouter()
 
@@ -50,16 +51,10 @@ async def export_playlist(
     playlist = await playlist_service.get_playlist_by_id(playlistId)
     
     if not playlist:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Playlist not found"
-        )
-        
+        raise NotFoundError("Playlist not found")
+
     if playlist.owner != current_user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Anda tidak berhak mengakses resource ini"
-        )
+        raise ForbiddenError("You are not entitled to access this resource")
 
     # Send message to queue
     message = {
