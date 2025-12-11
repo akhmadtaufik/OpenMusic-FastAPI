@@ -6,7 +6,7 @@ SQLAlchemy DSN for database connectivity using the asyncpg driver.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn, computed_field
+from pydantic import PostgresDsn, computed_field, field_validator
 from typing import Optional
 
 class Settings(BaseSettings):
@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     """
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
+    SECRET_KEY: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_SERVER: str
@@ -60,6 +61,8 @@ class Settings(BaseSettings):
     MINIO_ROOT_PASSWORD: str
     MINIO_BUCKET_NAME: str
 
+    LOG_LEVEL: str = "INFO"
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
@@ -79,5 +82,37 @@ class Settings(BaseSettings):
             port=self.POSTGRES_PORT,
             path=self.POSTGRES_DB,
         ))
+
+    @field_validator("SECRET_KEY", "ACCESS_TOKEN_KEY", "REFRESH_TOKEN_KEY")
+    @classmethod
+    def _not_empty(cls, value: str, info):
+        if value is None or not str(value).strip():
+            raise ValueError(f"{info.field_name} must not be empty")
+        return value
+
+    @field_validator("RABBITMQ_ERLANG_COOKIE")
+    @classmethod
+    def _validate_erlang_cookie(cls, value: str):
+        if value is None or len(value) < 32:
+            raise ValueError("RABBITMQ_ERLANG_COOKIE must be at least 32 characters")
+        return value
+
+    @field_validator("POSTGRES_PASSWORD")
+    @classmethod
+    def _validate_postgres_password(cls, value: str):
+        if value is None or not str(value).strip():
+            raise ValueError("POSTGRES_PASSWORD must not be empty")
+        if str(value).lower() == "password":
+            raise ValueError("POSTGRES_PASSWORD must not be 'password'")
+        return value
+
+    @field_validator("LOG_LEVEL")
+    @classmethod
+    def _normalize_log_level(cls, value: str):
+        lvl = str(value).upper()
+        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if lvl not in allowed:
+            raise ValueError("LOG_LEVEL must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
+        return lvl
 
 settings = Settings()
