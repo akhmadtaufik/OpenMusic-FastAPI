@@ -2,10 +2,10 @@
 """
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_current_user
 from app.services.collaboration_service import CollaborationService
 from pydantic import BaseModel
+from app.api import deps
 
 router = APIRouter()
 
@@ -17,10 +17,9 @@ class CollaborationPayload(BaseModel):
 async def add_collaboration(
     data: CollaborationPayload,
     current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    service: CollaborationService = Depends(deps.get_collaboration_service),
 ):
     """Add a collaborator to a playlist."""
-    service = CollaborationService(db)
     collab_id = await service.add_collaboration(
         playlist_id=data.playlistId,
         user_id=data.userId,
@@ -38,10 +37,9 @@ async def add_collaboration(
 async def delete_collaboration(
     data: CollaborationPayload,
     current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    service: CollaborationService = Depends(deps.get_collaboration_service),
 ):
     """Remove a collaborator from a playlist."""
-    service = CollaborationService(db)
     await service.delete_collaboration(
         playlist_id=data.playlistId,
         user_id=data.userId,
