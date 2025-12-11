@@ -11,14 +11,21 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.api import api_router
 from app.core.exceptions import (
-    NotFoundError,
-    ValidationError,
     AuthenticationError,
     ForbiddenError,
+    NotFoundError,
     PayloadTooLargeError,
+    ValidationError,
 )
+from app.core.logging import get_logger
+from app.core.middleware import RequestLoggingMiddleware
+
+logger = get_logger("openmusic")
 
 app = FastAPI(title="OpenMusic API")
+
+# Middleware registration
+app.add_middleware(RequestLoggingMiddleware, logger=logger)
 
 # Register versioned API routes
 app.include_router(api_router)
@@ -88,6 +95,15 @@ async def forbidden_exception_handler(request: Request, exc: ForbiddenError):
     )
 
 
+@app.exception_handler(PayloadTooLargeError)
+async def payload_too_large_exception_handler(request: Request, exc: PayloadTooLargeError):
+    """Map payload too large errors to a 413 response."""
+    return JSONResponse(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        content={"status": "fail", "message": str(exc)},
+    )
+
+
 @app.exception_handler(NotFoundError)
 async def not_found_exception_handler(request: Request, exc: NotFoundError):
     """Map domain NotFoundError to a 404 response.
@@ -131,8 +147,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     Returns:
         JSONResponse: A 500 response with {"status": "error", "message": "Internal Server Error"}.
     """
-    # Log the error here in a real app
-    print(f"Global error: {exc}")
+    logger.error(
+        "Global Exception",
+        exc_info=True,
+        extra={"path": str(request.url.path)},
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"status": "error", "message": "Internal Server Error"},
