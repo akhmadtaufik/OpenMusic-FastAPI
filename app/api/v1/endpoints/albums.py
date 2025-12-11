@@ -7,11 +7,12 @@ logic to the AlbumService and returns standardized API envelopes.
 import time
 from fastapi import APIRouter, Depends, status, UploadFile, File, Request
 from app.api import deps
+from app.api.deps import get_current_user
 from app.services.album_service import AlbumService
 from app.services.storage_service import storage_service
 from app.schemas.album import AlbumCreate, AlbumResponse, StandardResponse, DataWrapper, AlbumIdWrapper
 from app.core.exceptions import ValidationError, PayloadTooLargeError
-from app.utils.file_validator import validate_image_bytes
+from app.utils.file_validator import validate_image_bytes, sanitize_filename
 from app.core.limiter import limiter
 
 router = APIRouter()
@@ -34,6 +35,7 @@ async def create_album(
     request: Request,
     album_in: AlbumCreate,
     service: AlbumService = Depends(deps.get_album_service),
+    current_user: str = Depends(get_current_user),
 ):
     """Create a new album.
 
@@ -87,11 +89,18 @@ async def get_album(
         data=DataWrapper(album=album_response)
     )
 
-@router.put("/{id}", response_model=StandardResponse[None])
+@router.put(
+    "/{id}",
+    response_model=StandardResponse[None],
+    summary="Update album",
+    description="Update album fields by id.",
+    responses={401: {"description": "Unauthorized"}, 404: {"description": "Album not found"}},
+)
 async def update_album(
     id: str,
     album_in: AlbumCreate,
     service: AlbumService = Depends(deps.get_album_service),
+    current_user: str = Depends(get_current_user),
 ):
     """Update an album's mutable fields.
 
@@ -109,10 +118,17 @@ async def update_album(
         message="Album updated"
     )
 
-@router.delete("/{id}", response_model=StandardResponse[None])
+@router.delete(
+    "/{id}",
+    response_model=StandardResponse[None],
+    summary="Delete album",
+    description="Delete an album by id.",
+    responses={401: {"description": "Unauthorized"}, 404: {"description": "Album not found"}},
+)
 async def delete_album(
     id: str,
     service: AlbumService = Depends(deps.get_album_service),
+    current_user: str = Depends(get_current_user),
 ):
     """Delete an album by its identifier.
 
@@ -150,6 +166,7 @@ async def upload_cover(
     id: str,
     service: AlbumService = Depends(deps.get_album_service),
     cover: UploadFile = File(...),
+    current_user: str = Depends(get_current_user),
 ):
     """Upload a cover image for an album.
 
