@@ -35,12 +35,27 @@ services:
       - redis_data:/data
 
   rabbitmq:
-    image: rabbitmq:management-alpine
+    image: rabbitmq:3-management-alpine
     ports:
       - "5672:5672"
       - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+      - RABBITMQ_ERLANG_COOKIE=${RABBITMQ_ERLANG_COOKIE}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+
+  consumer:
+    build: .
+    command: python -m app.consumer
+    depends_on:
+      - rabbitmq
+      - db
+    volumes:
+      - .:/code
+    env_file:
+      - .env
 
   minio:
     image: minio/minio
