@@ -4,10 +4,10 @@ Provides like/unlike/count operations for albums with Redis caching.
 """
 
 from fastapi import APIRouter, Depends, status, Response
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_current_user
 from app.services.like_service import LikeService
 from app.services.cache_service import cache_service
+from app.api import deps
 
 router = APIRouter()
 
@@ -24,13 +24,12 @@ def get_likes_cache_key(album_id: str) -> str:
 async def like_album(
     id: str,
     current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    service: LikeService = Depends(deps.get_like_service),
 ):
     """Like an album.
 
     After successful like, invalidates the cache for this album's likes count.
     """
-    service = LikeService(db)
     await service.add_like(current_user, id)
     
     # Invalidate cache
@@ -46,13 +45,12 @@ async def like_album(
 async def unlike_album(
     id: str,
     current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    service: LikeService = Depends(deps.get_like_service),
 ):
     """Unlike an album.
 
     After successful unlike, invalidates the cache for this album's likes count.
     """
-    service = LikeService(db)
     await service.remove_like(current_user, id)
     
     # Invalidate cache
@@ -68,7 +66,7 @@ async def unlike_album(
 async def get_album_likes(
     id: str,
     response: Response,
-    db: AsyncSession = Depends(get_db)
+    service: LikeService = Depends(deps.get_like_service),
 ):
     """Get the number of likes for an album (public).
 
@@ -91,7 +89,6 @@ async def get_album_likes(
         }
     
     # Cache miss - get from database
-    service = LikeService(db)
     count = await service.get_likes_count(id)
     
     # Store in cache
