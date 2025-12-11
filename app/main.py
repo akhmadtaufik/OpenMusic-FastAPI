@@ -75,12 +75,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="OpenMusic API", lifespan=lifespan)
 
-# Add CORS middleware
+# Add CORS middleware (using allowlist from config)
+cors_origins = settings.BACKEND_CORS_ORIGINS if settings.BACKEND_CORS_ORIGINS else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS.split(",") if settings.ALLOWED_ORIGINS else ["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"],
     allow_headers=["*"],
 )
 
