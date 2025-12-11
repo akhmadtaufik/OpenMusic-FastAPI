@@ -83,6 +83,11 @@ class Settings(BaseSettings):
             path=self.POSTGRES_DB,
         ))
 
+    @computed_field
+    @property
+    def REDIS_SERVER(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
+
     @field_validator("SECRET_KEY", "ACCESS_TOKEN_KEY", "REFRESH_TOKEN_KEY")
     @classmethod
     def _not_empty(cls, value: str, info):
@@ -114,5 +119,26 @@ class Settings(BaseSettings):
         if lvl not in allowed:
             raise ValueError("LOG_LEVEL must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
         return lvl
+
+    @field_validator("RABBITMQ_SERVER")
+    @classmethod
+    def _validate_rabbitmq_server(cls, value: str):
+        if not value or not value.startswith("amqp"):
+            raise ValueError("RABBITMQ_SERVER must be a valid amqp URL")
+        return value
+
+    @field_validator("MINIO_ENDPOINT")
+    @classmethod
+    def _validate_minio_endpoint(cls, value: str):
+        if ":" not in value:
+            raise ValueError("MINIO_ENDPOINT must include host and port")
+        return value
+
+    @field_validator("REDIS_HOST")
+    @classmethod
+    def _validate_redis_host(cls, value: str):
+        if not value or not str(value).strip():
+            raise ValueError("REDIS_HOST must not be empty")
+        return value
 
 settings = Settings()
