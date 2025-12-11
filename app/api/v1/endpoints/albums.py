@@ -5,12 +5,13 @@ logic to the AlbumService and returns standardized API envelopes.
 """
 
 import time
-from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.services.album_service import AlbumService
 from app.services.storage_service import storage_service
 from app.schemas.album import AlbumCreate, AlbumResponse, StandardResponse, DataWrapper, AlbumIdWrapper
+from app.core.exceptions import ValidationError, PayloadTooLargeError
 
 router = APIRouter()
 
@@ -132,23 +133,18 @@ async def upload_cover(
         StandardResponse[None]: Response with a success status and message.
 
     Raises:
-        HTTPException 400: If the file is not an image or exceeds 512KB.
-        HTTPException 404: If the album does not exist.
+        ValidationError: If the file is not an image.
+        PayloadTooLargeError: If the file exceeds 512KB.
+        NotFoundError: If the album does not exist.
     """
     # Validate content type
     if cover.content_type not in ALLOWED_CONTENT_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File must be an image (jpeg, png, gif, webp)"
-        )
+        raise ValidationError("File must be an image (jpeg, png, gif, webp)")
 
     # Read and validate file size
     content = await cover.read()
     if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File size exceeds maximum allowed ({MAX_FILE_SIZE // 1000}KB)"
-        )
+        raise PayloadTooLargeError(f"File size exceeds maximum allowed ({MAX_FILE_SIZE // 1000}KB)")
 
     # Reset file position for upload
     await cover.seek(0)
