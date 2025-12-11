@@ -4,12 +4,12 @@ Provides endpoint to request playlist export via RabbitMQ.
 """
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_current_user
 from app.services.playlist_service import PlaylistService
-from app.services.producer_service import producer_service
+from app.services.producer_service import producer_service, ProducerService
 from pydantic import BaseModel, EmailStr
 from app.core.exceptions import NotFoundError, ForbiddenError
+from app.api import deps
 
 router = APIRouter()
 
@@ -24,7 +24,8 @@ async def export_playlist(
     playlistId: str,
     payload: ExportPlaylistRequest,
     current_user: str = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    playlist_service: PlaylistService = Depends(deps.get_playlist_service),
+    producer: ProducerService = Depends(deps.get_producer_service),
 ):
     """Request to export a playlist.
     
@@ -43,8 +44,6 @@ async def export_playlist(
         403: If user is not the owner.
         404: If playlist not found.
     """
-    playlist_service = PlaylistService(db)
-    
     # Check ownership/existence (using verify_playlist_access logic or similar)
     # Since verify_playlist_access might allow collaborators, we need strict ownership checking
     # First, get the playlist to check owner
@@ -62,7 +61,7 @@ async def export_playlist(
         "targetEmail": payload.targetEmail
     }
     
-    await producer_service.send_message("export:playlist", message)
+    await producer.send_message("export:playlist", message)
     
     return {
         "status": "success",
