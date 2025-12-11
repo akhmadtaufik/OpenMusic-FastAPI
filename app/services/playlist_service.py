@@ -33,8 +33,8 @@ class PlaylistService:
         
         if playlist.owner == user_id:
             return # Owner has access
-
-        # Check collaboration
+        # Check collaboration via EXISTS to avoid loading full rows; user can access
+        # if they are explicitly listed as a collaborator on this playlist.
         stmt_collab = select(exists().where(
             Collaboration.playlist_id == playlist_id,
             Collaboration.user_id == user_id
@@ -197,8 +197,8 @@ class PlaylistService:
         # Verify Access (Owner OR Collaborator)
         # Note: We already fetched playlist and owner logic above, but to be consistent with new requirement:
         # "GET /playlists/{id}/songs (Get Songs): Use New Logic (Owner OR Collaborator)."
-        # But we already did a query. Let's reuse verify helper or just implement logic here efficiently.
-        # Since we have the playlist object, let's just check owner then collaborator.
+        # Since we have the playlist object, check owner first then collaborator to avoid
+        # an additional join unless required.
         if playlist.owner != owner_id:
              # Check collaboration
              stmt_collab = select(exists().where(
