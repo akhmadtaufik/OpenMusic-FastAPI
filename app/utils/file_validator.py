@@ -1,4 +1,9 @@
-"""File validation utilities (magic-number based image checks)."""
+"""File validation utilities (magic-number based image checks).
+
+Magic numbers are safer than Content-Type headers because clients can spoof
+MIME types; inspecting the first bytes prevents accepting disguised text
+files renamed as images.
+"""
 
 from app.core.exceptions import ValidationError
 
