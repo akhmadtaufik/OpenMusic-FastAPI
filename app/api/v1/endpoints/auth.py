@@ -2,8 +2,7 @@
 """
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db
+from app.api import deps
 from app.schemas.auth import LoginPayload, RefreshTokenPayload
 from app.services.auth_service import AuthService
 
@@ -12,10 +11,9 @@ router = APIRouter()
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def login(
     data: LoginPayload,
-    db: AsyncSession = Depends(get_db)
+    service: AuthService = Depends(deps.get_auth_service),
 ):
     """Login a user."""
-    service = AuthService(db)
     tokens = await service.login(data)
     
     return {
@@ -29,10 +27,9 @@ async def login(
 @router.put("/", response_model=dict)
 async def refresh_access_token(
     data: RefreshTokenPayload,
-    db: AsyncSession = Depends(get_db)
+    service: AuthService = Depends(deps.get_auth_service),
 ):
     """Refresh access token."""
-    service = AuthService(db)
     new_access_token = await service.refresh_token(data.refreshToken)
     
     return {
@@ -45,10 +42,9 @@ async def refresh_access_token(
 @router.delete("/", response_model=dict)
 async def logout(
     data: RefreshTokenPayload,
-    db: AsyncSession = Depends(get_db)
+    service: AuthService = Depends(deps.get_auth_service),
 ):
     """Logout a user (revoke refresh token)."""
-    service = AuthService(db)
     await service.logout(data.refreshToken)
     
     return {
