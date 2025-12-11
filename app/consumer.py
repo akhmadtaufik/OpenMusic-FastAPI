@@ -66,6 +66,8 @@ class Consumer:
 
     async def process_message(self, message: aio_pika.IncomingMessage):
         """Process incoming RabbitMQ message."""
+        # Ack happens via context manager *after* work completes to avoid
+        # losing messages if email sending fails mid-flight.
         async with message.process():
             try:
                 payload = json.loads(message.body.decode())
