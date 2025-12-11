@@ -1,7 +1,7 @@
 """API Endpoints for Playlist management.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from app.api.deps import get_current_user
 from app.schemas.playlist import (
     PlaylistCreate,
@@ -11,6 +11,7 @@ from app.schemas.playlist import (
 )
 from app.services.playlist_service import PlaylistService
 from app.api import deps
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -44,7 +45,9 @@ async def add_playlist(
     description="List playlists owned by or shared with the current user.",
     responses={401: {"description": "Unauthorized"}, 429: {"description": "Rate limit exceeded"}},
 )
+@limiter.limit("100/minute")
 async def get_playlists(
+    request: Request,
     current_user: str = Depends(get_current_user),
     service: PlaylistService = Depends(deps.get_playlist_service),
 ):
@@ -105,9 +108,11 @@ async def add_song_to_playlist(
     response_model=PlaylistWithSongsResponse,
     summary="Get playlist with songs",
     description="Fetch playlist details and songs (owner or collaborator).",
-    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}, 429: {"description": "Rate limit exceeded"}},
 )
+@limiter.limit("100/minute")
 async def get_playlist_songs(
+    request: Request,
     playlist_id: str,
     current_user: str = Depends(get_current_user),
     service: PlaylistService = Depends(deps.get_playlist_service),
@@ -149,9 +154,11 @@ async def delete_song_from_playlist(
     response_model=dict,
     summary="Get playlist activities",
     description="List playlist activities (owner only).",
-    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}, 429: {"description": "Rate limit exceeded"}},
 )
+@limiter.limit("100/minute")
 async def get_playlist_activities(
+    request: Request,
     playlist_id: str,
     current_user: str = Depends(get_current_user),
     service: PlaylistService = Depends(deps.get_playlist_service),
