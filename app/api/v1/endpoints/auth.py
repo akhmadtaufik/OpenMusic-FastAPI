@@ -37,8 +37,8 @@ async def login(
 @router.put(
     "/",
     response_model=dict,
-    summary="Refresh access token",
-    description="Exchange a valid refresh token for a new access token.",
+    summary="Refresh tokens",
+    description="Exchange a valid refresh token for new access and refresh tokens.",
     responses={401: {"description": "Invalid refresh token"}, 429: {"description": "Rate limit exceeded"}},
 )
 @limiter.limit("100/minute")
@@ -47,13 +47,14 @@ async def refresh_access_token(
     data: RefreshTokenPayload,
     service: AuthService = Depends(deps.get_auth_service),
 ):
-    """Refresh access token."""
-    new_access_token = await service.refresh_token(data.refreshToken)
+    """Refresh tokens with token rotation."""
+    tokens = await service.refresh_token(data.refreshToken)
     
     return {
         "status": "success",
         "data": {
-            "accessToken": new_access_token
+            "accessToken": tokens.accessToken,
+            "refreshToken": tokens.refreshToken
         }
     }
 
