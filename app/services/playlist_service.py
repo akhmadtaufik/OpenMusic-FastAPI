@@ -26,9 +26,7 @@ class PlaylistService:
             NotFoundError: If playlist not found.
             ForbiddenError: If access denied.
         """
-        stmt = select(Playlist).where(Playlist.id == playlist_id)
-        result = await self.db.execute(stmt)
-        playlist = result.scalar_one_or_none()
+        playlist = await self.get_playlist_by_id(playlist_id)
         
         if not playlist:
             raise NotFoundError("Playlist not found")
@@ -46,6 +44,19 @@ class PlaylistService:
             return # Collaborator has access
             
         raise ForbiddenError("You are not entitled to access this resource")
+
+    async def get_playlist_by_id(self, playlist_id: str):
+        """Get playlist by ID.
+        
+        Args:
+            playlist_id: ID of the playlist.
+            
+        Returns:
+            Playlist object or None.
+        """
+        stmt = select(Playlist).where(Playlist.id == playlist_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
 
     async def create_playlist(self, data: PlaylistCreate, owner_id: str) -> str:
