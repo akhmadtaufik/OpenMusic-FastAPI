@@ -197,10 +197,11 @@ async def upload_cover(
     # Verify album exists
     await service.get_album_by_id(id)
 
-    # Generate unique filename
+    # Generate unique filename with sanitization
     timestamp = int(time.time() * 1000)
     original_name = cover.filename or "cover"
-    filename = f"covers/{id}/{timestamp}_{original_name}"
+    safe_name = sanitize_filename(original_name)
+    filename = f"covers/{id}/{timestamp}_{safe_name}"
 
     # Upload to MinIO
     cover_url = await storage_service.upload_file(cover, filename)
