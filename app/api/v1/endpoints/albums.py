@@ -6,7 +6,6 @@ logic to the AlbumService and returns standardized API envelopes.
 
 import time
 from fastapi import APIRouter, Depends, status, UploadFile, File
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.services.album_service import AlbumService
 from app.services.storage_service import storage_service
@@ -23,7 +22,7 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[AlbumIdWrapper])
 async def create_album(
     album_in: AlbumCreate,
-    db: AsyncSession = Depends(deps.get_db)
+    service: AlbumService = Depends(deps.get_album_service),
 ):
     """Create a new album.
 
@@ -34,7 +33,6 @@ async def create_album(
     Returns:
         StandardResponse[AlbumIdWrapper]: Response with the created album ID.
     """
-    service = AlbumService(db)
     new_album = await service.create_album(album_in)
     return StandardResponse(
         status="success",
@@ -44,7 +42,7 @@ async def create_album(
 @router.get("/{id}", response_model=StandardResponse[DataWrapper[AlbumResponse]])
 async def get_album(
     id: str,
-    db: AsyncSession = Depends(deps.get_db)
+    service: AlbumService = Depends(deps.get_album_service),
 ):
     """Retrieve an album by its identifier.
 
@@ -56,7 +54,6 @@ async def get_album(
         StandardResponse[DataWrapper[AlbumResponse]]: Response with album data
         including its songs.
     """
-    service = AlbumService(db)
     album = await service.get_album_by_id(id)
     # Map cover_url to coverUrl for response
     album_response = AlbumResponse(
@@ -75,7 +72,7 @@ async def get_album(
 async def update_album(
     id: str,
     album_in: AlbumCreate,
-    db: AsyncSession = Depends(deps.get_db)
+    service: AlbumService = Depends(deps.get_album_service),
 ):
     """Update an album's mutable fields.
 
@@ -87,7 +84,6 @@ async def update_album(
     Returns:
         StandardResponse[None]: Response with a success status and message.
     """
-    service = AlbumService(db)
     await service.update_album(id, album_in)
     return StandardResponse(
         status="success",
@@ -97,7 +93,7 @@ async def update_album(
 @router.delete("/{id}", response_model=StandardResponse[None])
 async def delete_album(
     id: str,
-    db: AsyncSession = Depends(deps.get_db)
+    service: AlbumService = Depends(deps.get_album_service),
 ):
     """Delete an album by its identifier.
 
@@ -108,7 +104,6 @@ async def delete_album(
     Returns:
         StandardResponse[None]: Response with a success status and message.
     """
-    service = AlbumService(db)
     await service.delete_album(id)
     return StandardResponse(
         status="success",
@@ -119,8 +114,8 @@ async def delete_album(
 @router.post("/{id}/covers", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[None])
 async def upload_cover(
     id: str,
+    service: AlbumService = Depends(deps.get_album_service),
     cover: UploadFile = File(...),
-    db: AsyncSession = Depends(deps.get_db)
 ):
     """Upload a cover image for an album.
 
@@ -150,7 +145,6 @@ async def upload_cover(
     await cover.seek(0)
 
     # Verify album exists
-    service = AlbumService(db)
     await service.get_album_by_id(id)
 
     # Generate unique filename
