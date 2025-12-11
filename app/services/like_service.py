@@ -6,10 +6,9 @@ Handles add/remove/count operations for album likes using the UserAlbumLike mode
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException, status
 from app.models.user_album_like import UserAlbumLike
 from app.models.album import Album
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, ValidationError
 
 
 class LikeService:
@@ -36,7 +35,7 @@ class LikeService:
 
         Raises:
             NotFoundError: If album doesn't exist.
-            HTTPException 400: If user already liked this album.
+            ValidationError: If user already liked this album.
         """
         await self._check_album_exists(album_id)
 
@@ -48,10 +47,7 @@ class LikeService:
             )
         )
         if result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You have already liked this album"
-            )
+            raise ValidationError("You have already liked this album")
 
         # Create like
         like = UserAlbumLike(user_id=user_id, album_id=album_id)
@@ -61,10 +57,7 @@ class LikeService:
             await self.db.commit()
         except IntegrityError:
             await self.db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You have already liked this album"
-            )
+            raise ValidationError("You have already liked this album")
 
     async def remove_like(self, user_id: str, album_id: str) -> None:
         """Remove a like from an album (idempotent).
