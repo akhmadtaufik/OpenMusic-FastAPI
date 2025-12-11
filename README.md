@@ -2,14 +2,15 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?style=flat-square&logo=fastapi)
-![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?style=flat-square&logo=docker)
-![Coverage](https://img.shields.io/badge/Tests-Passing-success?style=flat-square)
+![Redis](https://img.shields.io/badge/Redis-Cache-red?style=flat-square&logo=redis)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-Queue-FF6600?style=flat-square&logo=rabbitmq)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)
 
 **OpenMusic API** is a high-performance, asynchronous RESTful API designed for managing music libraries, playlists, and user collaborations. This version introduces enterprise-grade features including server-side caching, queue-based asynchronous exports, and S3-compatible object storage.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ System Architecture
 
 The system utilizes a modern, event-driven microservices architecture. It decouples the core API from heavy background tasks (like emailing) using a message broker, ensuring high responsiveness.
 
@@ -33,7 +34,7 @@ graph LR
 
 ---
 
-## 🚀 Key Features
+## 🚀 Features
 
 ### Core Capabilities
 
@@ -47,6 +48,12 @@ graph LR
 * **Server-Side Caching**: Implemented **Redis** caching for the "Get Album Likes" feature to reduce database load and improve response times. Uses a Cache-Aside pattern with TTL.
 * **Object Storage**: Integrated **MinIO** (S3-compatible) for handling Album Cover uploads securely.
 * **Asynchronous Export**: Decoupled "Export Playlist" feature using **RabbitMQ**. The API acts as a **Producer**, while a separate **Consumer** worker handles data fetching and email delivery.
+
+### Improvements
+
+* 🛡️ Security: Rate limiting (SlowAPI), strict token validation, magic-number file checks
+* 📊 Observability: Structured JSON logs, request IDs, health checks, graceful shutdown
+* 🏗️ Infrastructure: Resource limits in Compose, deep health checks (/healthz)
 
 ---
 
@@ -76,8 +83,8 @@ graph LR
 
 ## 📋 Prerequisites
 
-* **Docker Desktop** (or Docker Engine + Compose plugin) installed.
-* *(Optional)* **Python 3.11+** for local development/testing outside containers.
+* Docker Engine + Compose plugin
+* (Optional) Python 3.11+ if running tests locally
 
 ---
 
@@ -101,21 +108,21 @@ Create a `.env` file in the root directory. Configure the following variables:
 | **App**      | `ACCESS_TOKEN_KEY`            | Secret for signing JWTs        | `secret_access_key`               |
 |              | `REFRESH_TOKEN_KEY`           | Secret for refresh tokens      | `secret_refresh_key`              |
 |              | `ACCESS_TOKEN_EXPIRE_MINUTES` | Token validity duration        | `30`                              |
-| **Postgres** | `POSTGRES_USER`               | DB Username                    | `openmusic`                       |
-|              | `POSTGRES_PASSWORD`           | DB Password                    | `openmusic`                       |
-|              | `POSTGRES_DB`                 | Database Name                  | `openmusic`                       |
+| **Postgres** | `POSTGRES_USER`               | DB Username                    | `your_user`                       |
+|              | `POSTGRES_PASSWORD`           | DB Password                    | `your_pass`                       |
+|              | `POSTGRES_DB`                 | Database Name                  | `your_db`                       |
 |              | `POSTGRES_SERVER`             | Service Hostname               | `db`                              |
 |              | `POSTGRES_PORT`               | Port                           | `5432`                            |
 | **Redis**    | `REDIS_HOST`                  | Redis Hostname                 | `redis`                           |
 |              | `REDIS_PORT`                  | Redis Port                     | `6379`                            |
 | **RabbitMQ** | `RABBITMQ_SERVER`             | AMQP Connection String         | `amqp://user:pass@rabbitmq:5672/` |
-|              | `RABBITMQ_USERNAME`           | Username                       | `user`                            |
-|              | `RABBITMQ_PASSWORD`           | Password                       | `password`                        |
+|              | `RABBITMQ_USERNAME`           | Username                       | `your_user`                       |
+|              | `RABBITMQ_PASSWORD`           | Password                       | `your_pass`                       |
 |              | `RABBITMQ_ERLANG_COOKIE`      | **CRITICAL** Clustering Secret | `secret_cookie_placeholder`       |
 | **MinIO**    | `MINIO_ENDPOINT`              | MinIO Hostname                 | `minio:9000`                      |
-|              | `MINIO_ROOT_USER`             | Admin User                     | `minioadmin`                      |
-|              | `MINIO_ROOT_PASSWORD`         | Admin Password                 | `minioadmin123`                   |
-|              | `MINIO_BUCKET_NAME`           | Bucket for uploads             | `openmusic`                       |
+|              | `MINIO_ROOT_USER`             | Admin User                     | `your_user`                       |
+|              | `MINIO_ROOT_PASSWORD`         | Admin Password                 | `your_pass`                       |
+|              | `MINIO_BUCKET_NAME`           | Bucket for uploads             | `your_bucket_name`                |
 | **SMTP**     | `SMTP_HOST`                   | SMTP Server (e.g. Mailtrap)    | `sandbox.smtp.mailtrap.io`        |
 |              | `SMTP_PORT`                   | SMTP Port                      | `2525`                            |
 |              | `SMTP_USER`                   | SMTP Username                  | `your_user`                       |
@@ -148,10 +155,28 @@ docker compose exec app alembic upgrade head
 Once running, you can access the following services:
 
 | Service                 | Access URL                                               | Credentials (if applicable)           |
-| :---------------------- | :------------------------------------------------------- | :------------------------------------ |
-| **API Documentation**   | [http://localhost:8001/docs](http://localhost:8001/docs) | -                                     |
+| :---------------------- | :------------------------------------------------------- | :------------------------------------ |                                     |
 | **RabbitMQ Management** | [http://localhost:15672](http://localhost:15672)         | Env: `RABBITMQ_USERNAME` / `PASSWORD` |
 | **MinIO Console**       | [http://localhost:9001](http://localhost:9001)           | Env: `MINIO_ROOT_USER` / `PASSWORD`   |
+
+---
+
+### Health
+
+`curl http://localhost:8001/healthz` returns deep checks for DB/Redis/RabbitMQ.
+
+### Troubleshooting
+
+* RabbitMQ cookie issues: `docker compose down -v` then up.
+* MinIO auth errors: ensure `MINIO_ROOT_USER/PASSWORD` match `.env`.
+
+---
+
+## 📖 API Documentation
+
+* Swagger UI: <http://localhost:8001/docs>
+* ReDoc: <http://localhost:8001/redoc>
+* Rate limits: 429 responses include rate-limit headers (SlowAPI).
 
 ---
 
@@ -174,19 +199,14 @@ docker compose exec app pytest tests/integration/test_exports_and_consumer.py -v
 ## 📂 Project Structure
 
 ```text
-.
-├── app
-│   ├── api              # API Routes (v1)
-│   ├── core             # Config, Security, Database
-│   ├── models           # SQLAlchemy ORM Models
-│   ├── schemas          # Pydantic Schemas
-│   ├── services         # Business Logic (Producer, Mail, Storage, etc.)
-│   ├── consumer.py      # Background Worker Entrypoint
-│   └── main.py          # App Entrypoint
-├── tests
-│   ├── integration      # Integration Tests
-│   └── conftest.py      # Pytest Fixtures
-├── docker-compose.yml   # Infrastructure Definition
-├── Dockerfile           # App Container Definition
-└── requirements.txt     # Python Dependencies
+app/
+  api/           # Route handlers
+  core/          # Config, DB, security, limiter, logging
+  services/      # Business logic (albums, playlists, likes, producer, mail, cache)
+  schemas/       # Pydantic models with examples
+  models/        # SQLAlchemy models
+  utils/         # Shared helpers (magic-number validator, common utils)
+  consumer.py    # RabbitMQ worker
+tests/           # Integration and unit tests
+docker-compose.yml
 ```
