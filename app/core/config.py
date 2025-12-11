@@ -43,12 +43,16 @@ class Settings(BaseSettings):
 
     # RabbitMQ
     RABBITMQ_SERVER: str
+    RABBITMQ_USERNAME: str
+    RABBITMQ_PASSWORD: str
+    RABBITMQ_ERLANG_COOKIE: str
 
     # SMTP
     SMTP_HOST: Optional[str]
     SMTP_PORT: Optional[int]
     SMTP_USER: Optional[str]
     SMTP_PASSWORD: Optional[str]
+    MAIL_FROM: str
 
     # MinIO
     MINIO_ENDPOINT: str = "minio:9000"
