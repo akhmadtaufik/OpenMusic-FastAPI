@@ -4,7 +4,7 @@ Defines input/output models used by the API layer, including typed wrappers
 for response shapes and attribute-based ORM serialization.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Generic, TypeVar, Optional, List
 from app.schemas.song import SongSimplified
 
@@ -19,6 +19,23 @@ class AlbumCreate(BaseModel):
     """
     name: str
     year: int
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Album name must not be empty")
+        if len(v) > 100:
+            raise ValueError("Album name must be at most 100 characters")
+        return v
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Year must be positive")
+        return v
 
 class AlbumResponse(BaseModel):
     """Serialized album representation returned by the API.

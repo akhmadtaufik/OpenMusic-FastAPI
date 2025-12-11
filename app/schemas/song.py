@@ -4,7 +4,7 @@ Defines input/output models, list/detail projections, and small wrappers used
 by the API layer. Models support construction from ORM objects where noted.
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 
 # Base
@@ -16,6 +16,30 @@ class SongBase(BaseModel):
     performer: str
     duration: Optional[int] = None
     albumId: Optional[str] = None
+
+    @field_validator("title", "genre", "performer")
+    @classmethod
+    def validate_str_fields(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Field must not be empty")
+        if len(v) > 100:
+            raise ValueError("Field must be at most 100 characters")
+        return v
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Year must be positive")
+        return v
+
+    @field_validator("duration")
+    @classmethod
+    def validate_duration(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("Duration must be non-negative")
+        return v
 
 # Create/Update
 class SongCreate(SongBase):
