@@ -26,6 +26,14 @@ services:
       - POSTGRES_PORT=5432
     depends_on:
       - db
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
 
   redis:
     image: redis:alpine
@@ -56,6 +64,14 @@ services:
       - .:/code
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.10'
+          memory: 128M
 
   minio:
     image: minio/minio
