@@ -8,6 +8,7 @@ SQLAlchemy DSN for database connectivity using the asyncpg driver.
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import PostgresDsn, computed_field, field_validator
 from typing import Optional
+import json
 
 class Settings(BaseSettings):
     """Application configuration backed by environment variables.
@@ -63,6 +64,9 @@ class Settings(BaseSettings):
 
     # Security
     ALLOWED_ORIGINS: str = "*"
+
+    # CORS
+    BACKEND_CORS_ORIGINS: list[str] = []
 
     LOG_LEVEL: str = "INFO"
 
@@ -143,5 +147,21 @@ class Settings(BaseSettings):
         if not value or not str(value).strip():
             raise ValueError("REDIS_HOST must not be empty")
         return value
+
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, value):
+        """Parse CORS origins from JSON string or list."""
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            if value.strip().startswith("["):
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    raise ValueError("BACKEND_CORS_ORIGINS must be a valid JSON array")
+            # Single origin as string
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return []
 
 settings = Settings()
