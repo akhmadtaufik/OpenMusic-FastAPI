@@ -39,3 +39,7 @@ class ForbiddenError(OpenMusicException):
     Typically mapped to an HTTP 403 by the API layer.
     """
     pass
+
+class PayloadTooLargeError(OpenMusicException):
+    """Raised when a payload exceeds allowed limits."""
+    pass
