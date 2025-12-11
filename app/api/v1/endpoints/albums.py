@@ -21,7 +21,14 @@ MAX_FILE_SIZE = 512_000
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[AlbumIdWrapper])
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StandardResponse[AlbumIdWrapper],
+    summary="Create album",
+    description="Create a new album with name and year.",
+    responses={400: {"description": "Validation error"}, 429: {"description": "Rate limit exceeded"}},
+)
 @limiter.limit("50/minute")
 async def create_album(
     request: Request,
@@ -43,7 +50,13 @@ async def create_album(
         data=AlbumIdWrapper(albumId=new_album.id)
     )
 
-@router.get("/{id}", response_model=StandardResponse[DataWrapper[AlbumResponse]])
+@router.get(
+    "/{id}",
+    response_model=StandardResponse[DataWrapper[AlbumResponse]],
+    summary="Get album",
+    description="Retrieve album detail including songs and cover URL.",
+    responses={404: {"description": "Album not found"}, 429: {"description": "Rate limit exceeded"}},
+)
 @limiter.limit("100/minute")
 async def get_album(
     request: Request,
@@ -117,7 +130,20 @@ async def delete_album(
     )
 
 
-@router.post("/{id}/covers", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[None])
+@router.post(
+    "/{id}/covers",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StandardResponse[None],
+    summary="Upload album cover",
+    description="Upload an image cover (PNG/JPEG/GIF/WebP, magic-number validated).",
+    responses={
+        400: {"description": "Invalid file or payload"},
+        403: {"description": "Forbidden"},
+        404: {"description": "Album not found"},
+        413: {"description": "Payload too large"},
+        429: {"description": "Rate limit exceeded"},
+    },
+)
 @limiter.limit("10/minute")
 async def upload_cover(
     request: Request,

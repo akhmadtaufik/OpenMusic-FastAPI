@@ -9,8 +9,15 @@ from app.core.limiter import limiter
 
 router = APIRouter()
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
+@router.post(
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Login",
+    description="Authenticate user and return access/refresh tokens.",
+    responses={401: {"description": "Invalid credentials"}, 429: {"description": "Rate limit exceeded"}},
+)
+@limiter.limit("100/minute")
 async def login(
     request: Request,
     data: LoginPayload,
@@ -27,8 +34,14 @@ async def login(
         }
     }
 
-@router.put("/", response_model=dict)
-@limiter.limit("10/minute")
+@router.put(
+    "/",
+    response_model=dict,
+    summary="Refresh access token",
+    description="Exchange a valid refresh token for a new access token.",
+    responses={401: {"description": "Invalid refresh token"}, 429: {"description": "Rate limit exceeded"}},
+)
+@limiter.limit("100/minute")
 async def refresh_access_token(
     request: Request,
     data: RefreshTokenPayload,
@@ -44,8 +57,14 @@ async def refresh_access_token(
         }
     }
 
-@router.delete("/", response_model=dict)
-@limiter.limit("10/minute")
+@router.delete(
+    "/",
+    response_model=dict,
+    summary="Logout",
+    description="Revoke a refresh token (logout).",
+    responses={400: {"description": "Refresh token not found"}, 429: {"description": "Rate limit exceeded"}},
+)
+@limiter.limit("100/minute")
 async def logout(
     request: Request,
     data: RefreshTokenPayload,

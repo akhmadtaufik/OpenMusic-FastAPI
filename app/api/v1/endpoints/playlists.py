@@ -14,7 +14,14 @@ from app.api import deps
 
 router = APIRouter()
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create playlist",
+    description="Create a playlist owned by the current user.",
+    responses={400: {"description": "Validation error"}, 401: {"description": "Unauthorized"}, 429: {"description": "Rate limit exceeded"}},
+)
 async def add_playlist(
     data: PlaylistCreate,
     current_user: str = Depends(get_current_user),
@@ -30,7 +37,13 @@ async def add_playlist(
         }
     }
 
-@router.get("/", response_model=dict)
+@router.get(
+    "/",
+    response_model=dict,
+    summary="List playlists",
+    description="List playlists owned by or shared with the current user.",
+    responses={401: {"description": "Unauthorized"}, 429: {"description": "Rate limit exceeded"}},
+)
 async def get_playlists(
     current_user: str = Depends(get_current_user),
     service: PlaylistService = Depends(deps.get_playlist_service),
@@ -45,7 +58,13 @@ async def get_playlists(
         }
     }
 
-@router.delete("/{playlist_id}", response_model=dict)
+@router.delete(
+    "/{playlist_id}",
+    response_model=dict,
+    summary="Delete playlist",
+    description="Delete a playlist (owner only).",
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+)
 async def delete_playlist(
     playlist_id: str,
     current_user: str = Depends(get_current_user),
@@ -59,7 +78,14 @@ async def delete_playlist(
         "message": "Playlist deleted successfully"
     }
 
-@router.post("/{playlist_id}/songs", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{playlist_id}/songs",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add song to playlist",
+    description="Add a song to a playlist (owner or collaborator).",
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+)
 async def add_song_to_playlist(
     playlist_id: str,
     data: PlaylistSongRequest,
@@ -74,7 +100,13 @@ async def add_song_to_playlist(
         "message": "Song added to playlist"
     }
 
-@router.get("/{playlist_id}/songs", response_model=PlaylistWithSongsResponse)
+@router.get(
+    "/{playlist_id}/songs",
+    response_model=PlaylistWithSongsResponse,
+    summary="Get playlist with songs",
+    description="Fetch playlist details and songs (owner or collaborator).",
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+)
 async def get_playlist_songs(
     playlist_id: str,
     current_user: str = Depends(get_current_user),
@@ -91,7 +123,13 @@ async def get_playlist_songs(
         }
     }
 
-@router.delete("/{playlist_id}/songs", response_model=dict)
+@router.delete(
+    "/{playlist_id}/songs",
+    response_model=dict,
+    summary="Remove song from playlist",
+    description="Remove a song from a playlist (owner or collaborator).",
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+)
 async def delete_song_from_playlist(
     playlist_id: str,
     data: PlaylistSongRequest,
@@ -106,7 +144,13 @@ async def delete_song_from_playlist(
         "message": "Song removed from playlist"
     }
 
-@router.get("/{playlist_id}/activities", response_model=dict)
+@router.get(
+    "/{playlist_id}/activities",
+    response_model=dict,
+    summary="Get playlist activities",
+    description="List playlist activities (owner only).",
+    responses={401: {"description": "Unauthorized"}, 403: {"description": "Forbidden"}, 404: {"description": "Not found"}},
+)
 async def get_playlist_activities(
     playlist_id: str,
     current_user: str = Depends(get_current_user),

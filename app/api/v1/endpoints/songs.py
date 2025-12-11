@@ -23,7 +23,14 @@ from app.core.limiter import limiter
 
 router = APIRouter()
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[SongIdWrapper])
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=StandardResponse[SongIdWrapper],
+    summary="Create song",
+    description="Create a new song and optionally associate it to an album.",
+    responses={400: {"description": "Validation error"}, 404: {"description": "Album not found"}, 429: {"description": "Rate limit exceeded"}},
+)
 @limiter.limit("100/minute")
 async def create_song(
     request: Request,
@@ -45,7 +52,13 @@ async def create_song(
         data=SongIdWrapper(songId=new_song.id)
     )
 
-@router.get("/", response_model=StandardResponse[SongListWrapper])
+@router.get(
+    "/",
+    response_model=StandardResponse[SongListWrapper],
+    summary="List songs",
+    description="List songs with optional title/performer filters (case-insensitive).",
+    responses={429: {"description": "Rate limit exceeded"}},
+)
 @limiter.limit("100/minute")
 async def get_songs(
     request: Request,
@@ -75,7 +88,13 @@ async def get_songs(
         data=SongListWrapper(songs=song_list)
     )
 
-@router.get("/{id}", response_model=StandardResponse[SongDetailWrapper])
+@router.get(
+    "/{id}",
+    response_model=StandardResponse[SongDetailWrapper],
+    summary="Get song",
+    description="Retrieve a single song by id.",
+    responses={404: {"description": "Song not found"}},
+)
 async def get_song(
     id: str,
     service: SongService = Depends(deps.get_song_service),
@@ -95,7 +114,13 @@ async def get_song(
         data=SongDetailWrapper(song=SongDetail.model_validate(song))
     )
 
-@router.put("/{id}", response_model=StandardResponse[None])
+@router.put(
+    "/{id}",
+    response_model=StandardResponse[None],
+    summary="Update song",
+    description="Update song fields by id.",
+    responses={404: {"description": "Song not found"}},
+)
 async def update_song(
     id: str,
     song_in: SongUpdate,
@@ -117,7 +142,13 @@ async def update_song(
         message="Song updated"
     )
 
-@router.delete("/{id}", response_model=StandardResponse[None])
+@router.delete(
+    "/{id}",
+    response_model=StandardResponse[None],
+    summary="Delete song",
+    description="Delete a song by id.",
+    responses={404: {"description": "Song not found"}},
+)
 async def delete_song(
     id: str,
     service: SongService = Depends(deps.get_song_service),

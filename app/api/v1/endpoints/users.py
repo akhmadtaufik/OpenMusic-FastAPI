@@ -10,8 +10,15 @@ from app.core.limiter import limiter
 
 router = APIRouter()
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
+@router.post(
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register user",
+    description="Create a new user account.",
+    responses={400: {"description": "Validation error"}, 409: {"description": "User already exists"}, 429: {"description": "Rate limit exceeded"}},
+)
+@limiter.limit("50/minute")
 async def add_user(
     request: Request,
     data: UserCreate,
