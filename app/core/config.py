@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     MINIO_ROOT_PASSWORD: str
     MINIO_BUCKET_NAME: str
 
+    # Security
+    ALLOWED_ORIGINS: str = "*"
+
     LOG_LEVEL: str = "INFO"
 
     @computed_field

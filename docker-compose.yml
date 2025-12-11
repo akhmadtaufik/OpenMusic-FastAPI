@@ -10,10 +10,16 @@ services:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
 
   app:
     build: .
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     volumes:
       - .:/code
     ports:
@@ -24,8 +30,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     depends_on:
       - db
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -41,6 +50,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -53,6 +67,8 @@ services:
       - RABBITMQ_ERLANG_COOKIE=${RABBITMQ_ERLANG_COOKIE}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    security_opt:
+      - no-new-privileges:true
 
   consumer:
     build: .
@@ -64,6 +80,8 @@ services:
       - .:/code
     env_file:
       - .env
+    security_opt:
+      - no-new-privileges:true
     deploy:
       resources:
         limits:
@@ -85,6 +103,11 @@ services:
       - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
     volumes:
       - minio_data:/data
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
 
   createbuckets:
     image: minio/mc
