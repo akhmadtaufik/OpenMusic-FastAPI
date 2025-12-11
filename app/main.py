@@ -29,6 +29,10 @@ from app.core.database import engine
 from sqlalchemy import text
 from app.services.cache_service import cache_service
 from app.core.config import settings
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
 
 logger = get_logger("openmusic")
 
@@ -71,6 +75,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="OpenMusic API", lifespan=lifespan)
 
 # Middleware registration
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestLoggingMiddleware, logger=logger)
 
 # Register versioned API routes
