@@ -5,12 +5,14 @@ logic to the AlbumService and returns standardized API envelopes.
 """
 
 import time
-from fastapi import APIRouter, Depends, status, UploadFile, File
+from fastapi import APIRouter, Depends, status, UploadFile, File, Request
 from app.api import deps
 from app.services.album_service import AlbumService
 from app.services.storage_service import storage_service
 from app.schemas.album import AlbumCreate, AlbumResponse, StandardResponse, DataWrapper, AlbumIdWrapper
 from app.core.exceptions import ValidationError, PayloadTooLargeError
+from app.utils.file_validator import validate_image_bytes
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -20,7 +22,9 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[AlbumIdWrapper])
+@limiter.limit("50/minute")
 async def create_album(
+    request: Request,
     album_in: AlbumCreate,
     service: AlbumService = Depends(deps.get_album_service),
 ):
@@ -40,7 +44,9 @@ async def create_album(
     )
 
 @router.get("/{id}", response_model=StandardResponse[DataWrapper[AlbumResponse]])
+@limiter.limit("100/minute")
 async def get_album(
+    request: Request,
     id: str,
     service: AlbumService = Depends(deps.get_album_service),
 ):
@@ -112,7 +118,9 @@ async def delete_album(
 
 
 @router.post("/{id}/covers", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[None])
+@limiter.limit("10/minute")
 async def upload_cover(
+    request: Request,
     id: str,
     service: AlbumService = Depends(deps.get_album_service),
     cover: UploadFile = File(...),
@@ -133,13 +141,12 @@ async def upload_cover(
         NotFoundError: If the album does not exist.
     """
     # Validate content type
-    if cover.content_type not in ALLOWED_CONTENT_TYPES:
-        raise ValidationError("File must be an image (jpeg, png, gif, webp)")
-
     # Read and validate file size
     content = await cover.read()
     if len(content) > MAX_FILE_SIZE:
         raise PayloadTooLargeError(f"File size exceeds maximum allowed ({MAX_FILE_SIZE // 1000}KB)")
+
+    validate_image_bytes(cover.filename or "cover", content)
 
     # Reset file position for upload
     await cover.seek(0)

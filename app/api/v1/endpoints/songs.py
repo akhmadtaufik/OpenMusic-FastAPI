@@ -5,7 +5,7 @@ filters. Business logic is delegated to the SongService; responses use a
 standardized envelope shape.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query, Request
 from app.api import deps
 from app.services.song_service import SongService
 from app.schemas.song import (
@@ -18,11 +18,15 @@ from app.schemas.song import (
     SongDetail
 )
 from app.schemas.album import StandardResponse
+from app.utils.common import clean_string
+from app.core.limiter import limiter
 
 router = APIRouter()
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=StandardResponse[SongIdWrapper])
+@limiter.limit("100/minute")
 async def create_song(
+    request: Request,
     song_in: SongCreate,
     service: SongService = Depends(deps.get_song_service),
 ):
@@ -42,10 +46,12 @@ async def create_song(
     )
 
 @router.get("/", response_model=StandardResponse[SongListWrapper])
+@limiter.limit("100/minute")
 async def get_songs(
+    request: Request,
     service: SongService = Depends(deps.get_song_service),
-    title: str = None,
-    performer: str = None,
+    title: str | None = Query(None, max_length=100),
+    performer: str | None = Query(None, max_length=100),
 ):
     """List songs with optional case-insensitive filters.
 
@@ -57,6 +63,10 @@ async def get_songs(
     Returns:
         StandardResponse[SongListWrapper]: Response with a list projection of songs.
     """
+    if title is not None:
+        title = clean_string(title, 100) or None
+    if performer is not None:
+        performer = clean_string(performer, 100) or None
     songs = await service.get_songs(title=title, performer=performer)
     # Map to simplified SongList
     song_list = [SongList.model_validate(song) for song in songs]

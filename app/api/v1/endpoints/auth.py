@@ -1,15 +1,18 @@
 """API Endpoints for Authentication.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from app.api import deps
 from app.schemas.auth import LoginPayload, RefreshTokenPayload
 from app.services.auth_service import AuthService
+from app.core.limiter import limiter
 
 router = APIRouter()
 
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def login(
+    request: Request,
     data: LoginPayload,
     service: AuthService = Depends(deps.get_auth_service),
 ):
@@ -25,7 +28,9 @@ async def login(
     }
 
 @router.put("/", response_model=dict)
+@limiter.limit("10/minute")
 async def refresh_access_token(
+    request: Request,
     data: RefreshTokenPayload,
     service: AuthService = Depends(deps.get_auth_service),
 ):
@@ -40,7 +45,9 @@ async def refresh_access_token(
     }
 
 @router.delete("/", response_model=dict)
+@limiter.limit("10/minute")
 async def logout(
+    request: Request,
     data: RefreshTokenPayload,
     service: AuthService = Depends(deps.get_auth_service),
 ):

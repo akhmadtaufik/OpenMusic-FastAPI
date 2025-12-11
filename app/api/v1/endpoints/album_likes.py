@@ -3,11 +3,12 @@
 Provides like/unlike/count operations for albums with Redis caching.
 """
 
-from fastapi import APIRouter, Depends, status, Response
+from fastapi import APIRouter, Depends, status, Response, Request
 from app.api.deps import get_current_user
 from app.services.like_service import LikeService
 from app.services.cache_service import cache_service
 from app.api import deps
+from app.core.limiter import limiter
 
 router = APIRouter()
 
@@ -21,7 +22,9 @@ def get_likes_cache_key(album_id: str) -> str:
 
 
 @router.post("/{id}/likes", status_code=status.HTTP_201_CREATED, response_model=dict)
+@limiter.limit("30/minute")
 async def like_album(
+    request: Request,
     id: str,
     current_user: str = Depends(get_current_user),
     service: LikeService = Depends(deps.get_like_service),
@@ -42,7 +45,9 @@ async def like_album(
 
 
 @router.delete("/{id}/likes", response_model=dict)
+@limiter.limit("30/minute")
 async def unlike_album(
+    request: Request,
     id: str,
     current_user: str = Depends(get_current_user),
     service: LikeService = Depends(deps.get_like_service),
@@ -63,7 +68,9 @@ async def unlike_album(
 
 
 @router.get("/{id}/likes", response_model=dict)
+@limiter.limit("100/minute")
 async def get_album_likes(
+    request: Request,
     id: str,
     response: Response,
     service: LikeService = Depends(deps.get_like_service),
