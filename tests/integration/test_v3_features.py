@@ -53,7 +53,9 @@ async def test_upload_cover_invalid_type(
     )
     
     assert response.status_code == 400
-    assert "image" in response.json()["detail"].lower()
+    data = response.json()
+    assert data["status"] == "fail"
+    assert "image" in data["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -70,8 +72,10 @@ async def test_upload_cover_too_large(
         files={"cover": ("large.png", BytesIO(large_content), "image/png")}
     )
     
-    assert response.status_code == 400
-    assert "512" in response.json()["detail"]
+    assert response.status_code == 413
+    data = response.json()
+    assert data["status"] == "fail"
+    assert "512" in data["message"]
 
 
 @pytest.mark.asyncio
