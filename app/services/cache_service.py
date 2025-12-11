@@ -16,11 +16,16 @@ class CacheService:
     """
 
     def __init__(self):
-        """Initialize Redis client with configuration from settings."""
-        self.client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            decode_responses=True  # Return strings instead of bytes
+        """Initialize Redis connection params; clients are created per call."""
+        self._host = settings.REDIS_HOST
+        self._port = settings.REDIS_PORT
+
+    def _client(self):
+        """Create a new Redis client to avoid cross-event-loop reuse in tests."""
+        return redis.Redis(
+            host=self._host,
+            port=self._port,
+            decode_responses=True
         )
 
     async def get(self, key: str) -> str | None:
@@ -33,7 +38,11 @@ class CacheService:
             Cached value or None if not found.
         """
         try:
-            return await self.client.get(key)
+            client = self._client()
+            try:
+                return await client.get(key)
+            finally:
+                await client.close()
         except redis.RedisError as e:
             # Log error but don't crash - cache miss is acceptable
             print(f"Redis GET error: {e}")
@@ -51,7 +60,11 @@ class CacheService:
             True if successful, False otherwise.
         """
         try:
-            await self.client.set(key, value, ex=expiration)
+            client = self._client()
+            try:
+                await client.set(key, value, ex=expiration)
+            finally:
+                await client.close()
             return True
         except redis.RedisError as e:
             print(f"Redis SET error: {e}")
@@ -67,15 +80,19 @@ class CacheService:
             True if deleted, False otherwise.
         """
         try:
-            await self.client.delete(key)
+            client = self._client()
+            try:
+                await client.delete(key)
+            finally:
+                await client.close()
             return True
         except redis.RedisError as e:
             print(f"Redis DELETE error: {e}")
             return False
 
     async def close(self):
-        """Close the Redis connection."""
-        await self.client.close()
+        """No-op retained for API compatibility."""
+        return None
 
 
 # Singleton instance for dependency injection
