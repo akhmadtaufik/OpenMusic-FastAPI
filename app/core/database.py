@@ -30,3 +30,16 @@ class Base(DeclarativeBase):
     share the same metadata and mapper configuration.
     """
     pass
+
+# Import models so Base.metadata is populated when using create_all in tests.
+from app.models import (  # noqa: E402,F401
+    album,
+    song,
+    user,
+    playlist,
+    playlist_song,
+    collaboration,
+    playlist_activity,
+    user_album_like,
+    authentication,
+)
