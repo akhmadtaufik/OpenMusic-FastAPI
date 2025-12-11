@@ -6,12 +6,17 @@ framework and domain errors into a standardized response schema without leaking
 internal details.
 """
 
+from contextlib import asynccontextmanager
+from typing import Dict
+import aio_pika
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.api import api_router
 from app.core.exceptions import (
     AuthenticationError,
+    AuthorizationError,
+    ConflictError,
     ForbiddenError,
     NotFoundError,
     PayloadTooLargeError,
@@ -19,16 +24,96 @@ from app.core.exceptions import (
 )
 from app.core.logging import get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.core.error_codes import ErrorCode
+from app.core.database import engine
+from sqlalchemy import text
+from app.services.cache_service import cache_service
+from app.core.config import settings
 
 logger = get_logger("openmusic")
 
-app = FastAPI(title="OpenMusic API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    rabbit_connection = None
+    try:
+        logger.info("Starting up application", extra={"event": "startup"})
+        rabbit_connection = await aio_pika.connect_robust(settings.RABBITMQ_SERVER)
+        app.state.rabbit_connection = rabbit_connection
+    except Exception as exc:
+        logger.error("Failed to initialize RabbitMQ connection", exc_info=True)
+        app.state.rabbit_connection = None
+
+    try:
+        yield
+    finally:
+        logger.info("Shutting down application", extra={"event": "shutdown"})
+        try:
+            await engine.dispose()
+            logger.info("Closed database engine")
+        except Exception:
+            logger.error("Error closing database engine", exc_info=True)
+
+        try:
+            await cache_service.close()
+            logger.info("Closed Redis cache client")
+        except Exception:
+            logger.error("Error closing Redis client", exc_info=True)
+
+        try:
+            if rabbit_connection:
+                await rabbit_connection.close()
+                logger.info("Closed RabbitMQ connection")
+        except Exception:
+            logger.error("Error closing RabbitMQ connection", exc_info=True)
+
+
+app = FastAPI(title="OpenMusic API", lifespan=lifespan)
 
 # Middleware registration
 app.add_middleware(RequestLoggingMiddleware, logger=logger)
 
 # Register versioned API routes
 app.include_router(api_router)
+
+
+@app.get("/healthz")
+async def healthcheck() -> Dict[str, str]:
+    statuses: Dict[str, str] = {}
+    http_status = status.HTTP_200_OK
+
+    # DB check
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
+        statuses["db"] = "up"
+    except Exception as exc:
+        statuses["db"] = "down"
+        logger.error("Healthcheck DB failure", exc_info=True)
+        http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    # Redis check
+    try:
+        pong = await cache_service.client.ping()
+        statuses["redis"] = "up" if pong else "down"
+        if not pong:
+            http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+    except Exception:
+        statuses["redis"] = "down"
+        logger.error("Healthcheck Redis failure", exc_info=True)
+        http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    # RabbitMQ check
+    try:
+        connection = await aio_pika.connect_robust(settings.RABBITMQ_SERVER)
+        await connection.close()
+        statuses["rabbitmq"] = "up"
+    except Exception:
+        statuses["rabbitmq"] = "down"
+        logger.error("Healthcheck RabbitMQ failure", exc_info=True)
+        http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+    return JSONResponse(status_code=http_status, content=statuses)
 
 
 @app.exception_handler(RequestValidationError)
@@ -53,7 +138,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     error_msg = "; ".join([f"{e['loc'][-1]}: {e['msg']}" for e in errors])
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={"status": "fail", "message": f"Validation Error: {error_msg}"},
+        content={
+            "status": "fail",
+            "message": f"Validation Error: {error_msg}",
+            "errorCode": ErrorCode.VALIDATION_ERROR,
+        },
     )
 
 
@@ -73,7 +162,11 @@ async def custom_validation_exception_handler(request: Request, exc: ValidationE
     """
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={"status": "fail", "message": str(exc)},
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.VALIDATION_ERROR,
+        },
     )
 
 
@@ -82,7 +175,24 @@ async def authentication_exception_handler(request: Request, exc: Authentication
     """Map domain AuthenticationError to a 401 response."""
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        content={"status": "fail", "message": str(exc)},
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.AUTHENTICATION_FAILED,
+        },
+    )
+
+
+@app.exception_handler(AuthorizationError)
+async def authorization_exception_handler(request: Request, exc: AuthorizationError):
+    """Map authorization failure to 403 response."""
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.AUTHORIZATION_FAILED,
+        },
     )
 
 
@@ -91,7 +201,23 @@ async def forbidden_exception_handler(request: Request, exc: ForbiddenError):
     """Map domain ForbiddenError to a 403 response."""
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
-        content={"status": "fail", "message": str(exc)},
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.AUTHORIZATION_FAILED,
+        },
+    )
+
+
+@app.exception_handler(ConflictError)
+async def conflict_exception_handler(request: Request, exc: ConflictError):
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.CONFLICT,
+        },
     )
 
 
@@ -100,7 +226,11 @@ async def payload_too_large_exception_handler(request: Request, exc: PayloadTooL
     """Map payload too large errors to a 413 response."""
     return JSONResponse(
         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-        content={"status": "fail", "message": str(exc)},
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.VALIDATION_ERROR,
+        },
     )
 
 
@@ -119,7 +249,11 @@ async def not_found_exception_handler(request: Request, exc: NotFoundError):
     """
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={"status": "fail", "message": str(exc)},
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": getattr(exc, "error_code", None) or ErrorCode.RESOURCE_NOT_FOUND,
+        },
     )
 
 
@@ -154,5 +288,21 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"status": "error", "message": "Internal Server Error"},
+        content={
+            "status": "error",
+            "message": "Internal Server Error",
+            "errorCode": ErrorCode.INTERNAL_ERROR,
+        },
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "fail",
+            "message": str(exc),
+            "errorCode": ErrorCode.VALIDATION_ERROR,
+        },
     )
