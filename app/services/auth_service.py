@@ -44,14 +44,21 @@ class AuthService:
         
         return AuthToken(accessToken=access_token, refreshToken=refresh_token)
 
-    async def refresh_token(self, token: str) -> str:
-        """Refresh access token using a valid refresh token.
+    async def refresh_token(self, token: str) -> AuthToken:
+        """Refresh tokens using a valid refresh token (with token rotation).
+        
+        Implements secure token rotation:
+        1. Verify old refresh token exists in DB
+        2. Delete old refresh token immediately (prevents reuse)
+        3. Verify token signature/claims
+        4. Generate new access AND refresh tokens
+        5. Save new refresh token to DB
         
         Args:
             token: The refresh token string.
             
         Returns:
-            New access token string.
+            AuthToken with new access and refresh tokens.
             
         Raises:
             AuthenticationError: If token is missing from DB or invalid.
@@ -63,14 +70,26 @@ class AuthService:
         
         if not stored_token:
             raise ValidationError("Refresh token not found in database")
+        
+        # Delete old token immediately (token rotation - prevents reuse)
+        await self.db.delete(stored_token)
+        await self.db.commit()
             
         # Verify signature/claims
         user_id = verify_refresh_token(token)
         if not user_id:
-             raise AuthenticationError("Invalid refresh token signature")
+            raise AuthenticationError("Invalid refresh token signature")
 
-        # Generate new access token
-        return create_access_token(subject=user_id)
+        # Generate new tokens (both access and refresh)
+        new_access_token = create_access_token(subject=user_id)
+        new_refresh_token = create_refresh_token(subject=user_id)
+        
+        # Store new refresh token
+        new_auth_entry = Authentication(token=new_refresh_token)
+        self.db.add(new_auth_entry)
+        await self.db.commit()
+
+        return AuthToken(accessToken=new_access_token, refreshToken=new_refresh_token)
 
     async def logout(self, token: str) -> None:
         """Revoke a refresh token.
