@@ -4,7 +4,7 @@ Defines input/output models used by the API layer, including typed wrappers
 for response shapes and attribute-based ORM serialization.
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 from typing import Generic, TypeVar, Optional, List
 from app.schemas.song import SongSimplified
 
@@ -17,8 +17,8 @@ class AlbumCreate(BaseModel):
         name: Album title.
         year: Release year.
     """
-    name: str
-    year: int
+    name: str = Field(..., example="In Rainbows")
+    year: int = Field(..., example=2007)
 
     @field_validator("name")
     @classmethod
@@ -52,9 +52,9 @@ class AlbumResponse(BaseModel):
         directly from ORM entities (SQLAlchemy models) via attribute access.
     """
     id: str
-    name: str
-    year: int
-    coverUrl: Optional[str] = None
+    name: str = Field(..., example="In Rainbows")
+    year: int = Field(..., example=2007)
+    coverUrl: Optional[str] = Field(default=None, example="http://minio:9000/openmusic/covers/abc.png")
     songs: List[SongSimplified] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -72,7 +72,7 @@ class AlbumIdWrapper(BaseModel):
 
     Matches endpoints that return just the created resource ID.
     """
-    albumId: str
+    albumId: str = Field(..., example="album-123")
 
 class StandardResponse(BaseModel, Generic[T]):
     """Standardized API response envelope.

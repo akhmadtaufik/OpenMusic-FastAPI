@@ -1,13 +1,13 @@
 """Pydantic schemas for User operations.
 """
 import re
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 
 class UserCreate(BaseModel):
     """Schema for creating a new user."""
-    username: str
-    password: str
-    fullname: str
+    username: str = Field(..., example="music_fan_123")
+    password: str = Field(..., example="Str0ngPass!")
+    fullname: str = Field(..., example="Ada Lovelace")
 
     @field_validator("username")
     @classmethod
@@ -31,8 +31,8 @@ class UserCreate(BaseModel):
 
 class UserResponse(BaseModel):
     """Schema for returning user details (no password)."""
-    id: str
-    username: str
-    fullname: str
+    id: str = Field(..., example="user-123")
+    username: str = Field(..., example="music_fan_123")
+    fullname: str = Field(..., example="Ada Lovelace")
 
     model_config = ConfigDict(from_attributes=True)

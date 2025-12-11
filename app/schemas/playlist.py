@@ -1,12 +1,12 @@
 """Pydantic schemas for Playlist operations.
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 from typing import List, Optional
 
 class PlaylistCreate(BaseModel):
     """Schema for creating a new playlist."""
-    name: str
+    name: str = Field(..., example="Chill Vibes")
 
     @field_validator("name")
     @classmethod
@@ -20,29 +20,29 @@ class PlaylistCreate(BaseModel):
 
 class PlaylistResponse(BaseModel):
     """Schema for returning playlist details."""
-    id: str
-    name: str
-    username: str
+    id: str = Field(..., example="playlist-123")
+    name: str = Field(..., example="Chill Vibes")
+    username: str = Field(..., example="music_fan_123")
 
     model_config = ConfigDict(from_attributes=True)
 
 class PlaylistSongRequest(BaseModel):
     """Schema for adding a song to a playlist."""
-    songId: str
+    songId: str = Field(..., example="song-123")
 
 class SongInPlaylist(BaseModel):
     """Schema for song details within a playlist response."""
-    id: str
-    title: str
-    performer: str
+    id: str = Field(..., example="song-123")
+    title: str = Field(..., example="Life in Technicolor")
+    performer: str = Field(..., example="Coldplay")
 
     model_config = ConfigDict(from_attributes=True)
 
 class PlaylistWithSongs(BaseModel):
     """Schema for playlist details including songs."""
-    id: str
-    name: str
-    username: str
+    id: str = Field(..., example="playlist-123")
+    name: str = Field(..., example="Chill Vibes")
+    username: str = Field(..., example="music_fan_123")
     songs: List[SongInPlaylist] = []
 
     model_config = ConfigDict(from_attributes=True)
