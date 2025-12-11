@@ -10,7 +10,13 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.api import api_router
-from app.core.exceptions import NotFoundError, ValidationError, AuthenticationError, ForbiddenError
+from app.core.exceptions import (
+    NotFoundError,
+    ValidationError,
+    AuthenticationError,
+    ForbiddenError,
+    PayloadTooLargeError,
+)
 
 app = FastAPI(title="OpenMusic API")
 
@@ -97,6 +103,15 @@ async def not_found_exception_handler(request: Request, exc: NotFoundError):
     """
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
+        content={"status": "fail", "message": str(exc)},
+    )
+
+
+@app.exception_handler(PayloadTooLargeError)
+async def payload_too_large_exception_handler(request: Request, exc: PayloadTooLargeError):
+    """Map payload too large errors to a 413 response."""
+    return JSONResponse(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         content={"status": "fail", "message": str(exc)},
     )
 
