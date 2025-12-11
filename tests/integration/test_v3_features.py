@@ -139,7 +139,9 @@ async def test_like_album_double_like(
     )
     
     assert response.status_code == 400
-    assert "already liked" in response.json()["detail"].lower()
+    data = response.json()
+    assert data["status"] == "fail"
+    assert "already liked" in data["message"].lower()
 
 
 @pytest.mark.asyncio
