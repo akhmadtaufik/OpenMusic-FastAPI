@@ -7,6 +7,7 @@ standardized envelope shape.
 
 from fastapi import APIRouter, Depends, status, Query, Request
 from app.api import deps
+from app.api.deps import get_current_user
 from app.services.song_service import SongService
 from app.schemas.song import (
     SongCreate, 
@@ -36,6 +37,7 @@ async def create_song(
     request: Request,
     song_in: SongCreate,
     service: SongService = Depends(deps.get_song_service),
+    current_user: str = Depends(get_current_user),
 ):
     """Create a new song.
 
@@ -93,9 +95,11 @@ async def get_songs(
     response_model=StandardResponse[SongDetailWrapper],
     summary="Get song",
     description="Retrieve a single song by id.",
-    responses={404: {"description": "Song not found"}},
+    responses={404: {"description": "Song not found"}, 429: {"description": "Rate limit exceeded"}},
 )
+@limiter.limit("100/minute")
 async def get_song(
+    request: Request,
     id: str,
     service: SongService = Depends(deps.get_song_service),
 ):
@@ -119,12 +123,13 @@ async def get_song(
     response_model=StandardResponse[None],
     summary="Update song",
     description="Update song fields by id.",
-    responses={404: {"description": "Song not found"}},
+    responses={401: {"description": "Unauthorized"}, 404: {"description": "Song not found"}},
 )
 async def update_song(
     id: str,
     song_in: SongUpdate,
     service: SongService = Depends(deps.get_song_service),
+    current_user: str = Depends(get_current_user),
 ):
     """Update a song's mutable fields.
 
@@ -147,11 +152,12 @@ async def update_song(
     response_model=StandardResponse[None],
     summary="Delete song",
     description="Delete a song by id.",
-    responses={404: {"description": "Song not found"}},
+    responses={401: {"description": "Unauthorized"}, 404: {"description": "Song not found"}},
 )
 async def delete_song(
     id: str,
     service: SongService = Depends(deps.get_song_service),
+    current_user: str = Depends(get_current_user),
 ):
     """Delete a song by its identifier.
 
